@@ -3,6 +3,9 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
 package com.mycompany.projetofinalpizzaria.View;
+import com.mycompany.projetofinalpizzaria.Controller.PedidoController;
+import com.mycompany.projetofinalpizzaria.Model.Estado;
+
 
 import javax.swing.JOptionPane;
 
@@ -13,7 +16,7 @@ import javax.swing.JOptionPane;
 public class VisualizarPedidos extends javax.swing.JFrame {
     //criado pelo Netbeans
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(VisualizarPedidos.class.getName());
-
+    private final PedidoController pedidoController = new PedidoController();
     //construtor
     public VisualizarPedidos() {
         initComponents();
@@ -29,17 +32,22 @@ public class VisualizarPedidos extends javax.swing.JFrame {
     
     
      public void atualizarTabela() {
-        //Instancia a classe que cria o modelo
-        PreencherTabelaListaPedidos preenchimento = new PreencherTabelaListaPedidos(); 
-        //Chama o método gerarModelo() e joga na tabela de Pedidos
-        tabelaPedidos.setModel(preenchimento.gerarModelo());
+        try {
+            PreencherTabelaListaPedidos preenchimento = new PreencherTabelaListaPedidos();
+            tabelaPedidos.setModel(preenchimento.gerarModelo());
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao carregar pedidos: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+        }
     }
      //preeche combo com todos os estados cadastrados no bd
     public void preencherComboEstado(){
-        BancoDados bd = BancoDados.getInstance();
-        for(int i = 0; i<bd.getListaEstado().size();i++){
-            String estado = bd.getListaEstado().get(i).getNome();
-            comboEstado.addItem(estado);
+        try {
+            comboEstado.removeAllItems();
+            for (Estado est : pedidoController.listarEstados()) {
+                comboEstado.addItem(est.getNome());
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao carregar estados: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
     /**
@@ -321,55 +329,24 @@ public class VisualizarPedidos extends javax.swing.JFrame {
 
     private void botaoAtualizarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoAtualizarActionPerformed
         int linhaSelecionada = tabelaPedidos.getSelectedRow();
-        //caso nenhuma linha selecionada
-        if(linhaSelecionada == -1){
-            JOptionPane.showMessageDialog(this,"Nenhuma linha foi selecionada");
-            panelAlterar.setEnabled(false);
-            botaoAtualizar.setEnabled(false);
-            comboEstado.setEnabled(false);
-            labelEditar.setEnabled(false);
+        if (linhaSelecionada == -1) {
+            JOptionPane.showMessageDialog(this, "Nenhuma linha foi selecionada");
             return;
         }
-        int numeroPedido = Integer.parseInt(tabelaPedidos.getValueAt(linhaSelecionada, 0).toString());
-        BancoDados bd = BancoDados.getInstance();
-        Pedido p = null;
-        //busca pedido no bd
-        for(int i = 0; i < bd.getListaPedido().size();i++){
-           p = bd.getListaPedido().get(i);
-           if(p.getIdPedido() == numeroPedido){
-               break;
-           }
-        }
-        if(p == null){
-            JOptionPane.showMessageDialog(this,"Erro ao encontrar cliente", "",JOptionPane.ERROR_MESSAGE);
+        try {
+            int numeroPedido = Integer.parseInt(tabelaPedidos.getValueAt(linhaSelecionada, 0).toString());
+            String novoEstado = comboEstado.getSelectedItem().toString();
+
+            pedidoController.alterarEstadoPedido(numeroPedido, novoEstado);
+
+            atualizarTabela();
             panelAlterar.setEnabled(false);
             botaoAtualizar.setEnabled(false);
             comboEstado.setEnabled(false);
             labelEditar.setEnabled(false);
-        }
-        else{
-            String estado = comboEstado.getSelectedItem().toString();
-            Estado e = null;
-            //busca o estado selecionado no bd
-            for(int i = 0; i < bd.getListaEstado().size(); i++){
-                e = bd.getListaEstado().get(i);
-                if(e.getNome().equals(estado)){
-                    //troca o estado do pedido e desabilita novamente as coisas
-                    p.setEstado(e);
-                    atualizarTabela();
-                    panelAlterar.setEnabled(false);
-                    botaoAtualizar.setEnabled(false);
-                    comboEstado.setEnabled(false);
-                    labelEditar.setEnabled(false);
-                    JOptionPane.showMessageDialog(this,"Estado alterado com sucesso");
-                    return;
-                }
-            }
-            JOptionPane.showMessageDialog(this,"Erro ao encontrar estado", "",JOptionPane.ERROR_MESSAGE);
-            panelAlterar.setEnabled(false);
-            botaoAtualizar.setEnabled(false);
-            comboEstado.setEnabled(false);
-            labelEditar.setEnabled(false);
+            JOptionPane.showMessageDialog(this, "Estado alterado com sucesso");
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao alterar estado: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_botaoAtualizarActionPerformed
 

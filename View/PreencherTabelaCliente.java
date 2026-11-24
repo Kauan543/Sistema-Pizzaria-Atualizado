@@ -1,34 +1,39 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
-package com.mycompany.projetofinalpizzaria;
+package com.mycompany.projetofinalpizzaria.View;
 
+import com.mycompany.projetofinalpizzaria.Controller.ClienteController;
+import com.mycompany.projetofinalpizzaria.Model.Cliente;
+import java.util.ArrayList;
 import javax.swing.table.DefaultTableModel;
 
-/**
- *
- * @author Kauan
- */
 public class PreencherTabelaCliente {
-    //Gera modelo de tabela ja preenchido com os dados do banco de dados com os dados dos clientes
-    public DefaultTableModel gerarModelo(){
-        String [] colunas = {"Nome", "Sobrenome", "Telefone"};
-        DefaultTableModel modelo = new DefaultTableModel(colunas, 0){
-            //Classe anonima para impedir a edição da celula
-            @Override
-            public boolean isCellEditable(int row, int column) {
-            return false; 
+
+    public DefaultTableModel gerarModelo() throws Exception {
+        String[] colunas = {"Nome", "Sobrenome", "Telefone"};
+        DefaultTableModel modelo = new DefaultTableModel(colunas, 0);
+
+        ClienteController controller = new ClienteController();
+        ArrayList<Cliente> clientes = controller.listarTodos();
+
+        for (Cliente c : clientes) {
+            modelo.addRow(new Object[]{c.getNome(), c.getSobrenome(), c.getTelefone()});
+        }
+        return modelo;
+    }
+
+    public DefaultTableModel gerarModeloFiltrado(String termo) throws Exception {
+        String[] colunas = {"Nome", "Sobrenome", "Telefone"};
+        DefaultTableModel modelo = new DefaultTableModel(colunas, 0);
+
+        ClienteController controller = new ClienteController();
+        ArrayList<Cliente> clientes = controller.buscarPorSobrenome(termo);
+        if(clientes == null || clientes.isEmpty()){
+            Cliente c = controller.buscarPorTelefone(termo);
+            modelo.addRow(new Object[]{c.getNome(), c.getSobrenome(), c.getTelefone()});
+        }
+        else{
+            for (Cliente c : clientes) {
+                modelo.addRow(new Object[]{c.getNome(), c.getSobrenome(), c.getTelefone()});
             }
-        };        
-        BancoDados banco = BancoDados.getInstance();
-        for(int i = 0; i<banco.getListaCliente().size();i++){
-            Object [] linha= {
-                banco.getListaCliente().get(i).getNome(),
-                banco.getListaCliente().get(i).getSobrenome(),
-                banco.getListaCliente().get(i).getTelefone()
-            };
-            modelo.addRow(linha);
         }
         return modelo;
     }

@@ -8,7 +8,13 @@ import com.mycompany.projetofinalpizzaria.Model.Circulo;
 import java.util.ArrayList;
 import javax.swing.ButtonGroup;
 import javax.swing.JOptionPane;
-import javax.swing.table.DefaultTableModel;
+import com.mycompany.projetofinalpizzaria.Controller.PedidoController;
+import com.mycompany.projetofinalpizzaria.Controller.SaborController;
+import com.mycompany.projetofinalpizzaria.Model.Forma;
+import com.mycompany.projetofinalpizzaria.Model.Quadrado;
+import com.mycompany.projetofinalpizzaria.Model.Sabor;
+import com.mycompany.projetofinalpizzaria.Model.Triangulo;
+import com.mycompany.projetofinalpizzaria.Model.Pizza;
 
 /**
  *
@@ -17,8 +23,8 @@ import javax.swing.table.DefaultTableModel;
 public class NovaPizza extends javax.swing.JFrame {
     //gerado pelo Netbeans
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(NovaPizza.class.getName());
-    //variavel pra guardar preço total da pizza
-    private double precoTotalCalculado = 0.0;
+    private final SaborController saborController = new SaborController();
+    private final PedidoController pedidoController = new PedidoController();
     //variavel pra guarda a referencia da tela de pedidos
     private RealizarPedido telaPedido;
     //construtor com a referencia da tela de realizar pedido, para no futuro atualiza a tabela 
@@ -49,110 +55,98 @@ public class NovaPizza extends javax.swing.JFrame {
         grupoSabores.add(CheckSabor2);   
     }
     private double obterPrecoPorCm2(String nomeSabor) {
-        if (nomeSabor == null){
-            return 0.0;
-        }
-        BancoDados bd = BancoDados.getInstance();
-        //busca preço por cm² no bd
-        for (int i = 0; i < bd.getListaSabor().size(); i++) {
-            if (bd.getListaSabor().get(i).getSabor().equals(nomeSabor)) {
-                return bd.getListaSabor().get(i).getTipo().getPrecoPorCentimentroQuadrado(); 
+        if (nomeSabor == null || nomeSabor.isBlank()) {
+                return 0.0;
             }
+        try {
+                Sabor s = saborController.buscarSaborPorNome(nomeSabor);
+                if (s != null) {
+                    return s.getTipo().getPrecoPorCentimentroQuadrado();
+                }
+        }catch (Exception e) {
+            logger.log(java.util.logging.Level.WARNING, "Erro ao buscar preço do sabor", e);
         }
-        return 0;
+        return 0.0;
     }
     
-    private void calcularPreco() {
-    try { 
-        double area = 0.0;
-        double valorTotal = 0.0;
-        double precoPorCmQuadrado =0.0;
-        Forma f;
-        if (comboSabor1.getSelectedItem() != null) {
-            String nomeSabor1 = comboSabor1.getSelectedItem().toString();
-            double precoSabor1 = obterPrecoPorCm2(nomeSabor1);
-            if (CheckSabor2.isSelected() && comboSabor2.getSelectedItem() != null) {
-                //caso escolha 2 sabores
-                String nomeSabor2 = comboSabor2.getSelectedItem().toString();
-                double precoSabor2 = obterPrecoPorCm2(nomeSabor2);
-                precoPorCmQuadrado = (precoSabor1 + precoSabor2) / 2.0;
-            } else {
-                //caso escolha 1 sabor
-                precoPorCmQuadrado = precoSabor1;
+   private void calcularPreco() {
+        try { 
+            double area = 0.0;
+            double valorTotal = 0.0;
+            double precoPorCmQuadrado = 0.0;
+            Forma f;
+            if (comboSabor1.getSelectedItem() != null) {
+                String nomeSabor1 = comboSabor1.getSelectedItem().toString();
+                double precoSabor1 = obterPrecoPorCm2(nomeSabor1);
+                if (CheckSabor2.isSelected() && comboSabor2.getSelectedItem() != null) {
+                    //caso escolha 2 sabores
+                    String nomeSabor2 = comboSabor2.getSelectedItem().toString();
+                    double precoSabor2 = obterPrecoPorCm2(nomeSabor2);
+                    precoPorCmQuadrado = (precoSabor1 + precoSabor2) / 2.0;
+                } else {
+                    //caso escolha 1 sabor
+                    precoPorCmQuadrado = precoSabor1;
+                }
             }
-        }
-        // caso escolha por area
-        if (CheckArea.isSelected() && !caixaTextoArea.getText().isEmpty()) {
-            area = Double.parseDouble(caixaTextoArea.getText());
-            double lado = 0;
-            if (CheckQuadrada.isSelected()) {
-                Quadrado q = new Quadrado();
-                lado = q.calcularLadoQuadrado(area);
-            } else if (CheckCircular.isSelected()) {
-                Circulo c = new Circulo();
-                lado = c.calcularRaioCirculo(area);
-            } else if (CheckTriangular.isSelected()) {
-                Triangulo t = new Triangulo();
-                lado = t.calcularLadoTriangulo(area);
+            // caso escolha por area
+            if (CheckArea.isSelected() && !caixaTextoArea.getText().trim().isEmpty()) {
+                area = Double.parseDouble(caixaTextoArea.getText().trim().replace(",", "."));
+                double lado = 0;
+                if (CheckQuadrada.isSelected()) {
+                    Quadrado q = new Quadrado();
+                    lado = q.calcularLadoQuadrado(area);
+                    q.setLado(lado); // Valida se o lado resultante está dentro do limite
+                } else if (CheckCircular.isSelected()) {
+                    Circulo c = new Circulo();
+                    lado = c.calcularRaioCirculo(area);
+                    c.setRaio(lado); // Valida se o raio resultante está dentro do limite
+                } else if (CheckTriangular.isSelected()) {
+                    Triangulo t = new Triangulo();
+                    lado = t.calcularLadoTriangulo(area);
+                    t.setLado(lado); // Valida se o lado resultante está dentro do limite
+                }
+                lugarMedidaFinal.setText(String.format("Medida = %.2f cm", lado));
+            } 
+            //caso escolha por dimensao
+            else if (CheckDimensao.isSelected() && !caixaTextoLado.getText().trim().isEmpty()) {
+                double dimensao = Double.parseDouble(caixaTextoLado.getText().trim().replace(",", "."));
+                
+                if (CheckQuadrada.isSelected()) {
+                    f = new Quadrado(dimensao);
+                    area = f.calculaArea();
+                } else if (CheckCircular.isSelected()) {
+                    f = new Circulo(dimensao);
+                    area = f.calculaArea();
+                } else if (CheckTriangular.isSelected()) {
+                    f = new Triangulo(dimensao);
+                    area = f.calculaArea();
+                }
+                lugarMedidaFinal.setText(String.format("Área = %.2f cm²", area));
             }
-            //para garantir q apareça com no maximo 2 numeros depois da virgula
-            lugarMedidaFinal.setText(String.format("Medida = %.2f", lado));
-            
-        } 
-        //caso escolha por dimensao
-        else if (CheckDimensao.isSelected() && !caixaTextoLado.getText().isEmpty()) {
-            double dimensao = Double.parseDouble(caixaTextoLado.getText());
-            
-            if (CheckQuadrada.isSelected()) {
-                f = new Quadrado(dimensao);
-                area = f.calculaArea();
-            } else if (CheckCircular.isSelected()) {
-                f = new Circulo(dimensao);
-                area = f.calculaArea();
-            } else if (CheckTriangular.isSelected()) {
-                f = new Triangulo(dimensao);
-                area = f.calculaArea();
-            }
-            //para garantir q apareça com no maximo 2 numeros depois da virgula
-            lugarMedidaFinal.setText(String.format("Area = %.2f", area));
-        }
-        //calcula valor total
-        valorTotal = area * precoPorCmQuadrado;
-        //salva na variavel o valor
-        this.precoTotalCalculado = valorTotal;
-        //para garantir q apareça com no maximo 2 numeros depois da virgula
-        lugarPreco.setText(String.format("Preço: R$: %.2f", valorTotal));
+            //calcula valor total
+            valorTotal = area * precoPorCmQuadrado;
+            lugarPreco.setText(String.format("Preço: R$: %.2f", valorTotal));
 
-    } catch (NumberFormatException e) {
-        //caso alguma informação falte
-        lugarPreco.setText("Preço: R$: 0.00");
-    }
-    catch(Exception e ){
-        //caso ultrapasse limite das dimensões
-        JOptionPane.showMessageDialog(this,"Limite das dimensão não se enquadra","",JOptionPane.ERROR_MESSAGE);
-    }
-}
-
-    //para ver se ja existe sabor no combo e nao ficar preenchendo varias vezes
-    private boolean itemExiste(javax.swing.JComboBox<String> combo, String item) {
-        for (int i = 0; i < combo.getItemCount(); i++) {
-            if (combo.getItemAt(i).equals(item)) {
-                return true;
-            }
+        } catch (NumberFormatException e) {
+            lugarPreco.setText("Preço: R$: 0.00");
+            lugarMedidaFinal.setText("Área ou lado :");
+        } catch (Exception e) {
+            lugarPreco.setText("Preço: R$: 0.00");
+            lugarMedidaFinal.setText("Fora do limite!");
         }
-        return false;
     }
     //para preencher combos de sabor
     public void preencherComboSabor() {
-        BancoDados bd = BancoDados.getInstance();
-        for (int i = 0; i < bd.getListaSabor().size(); i++) {
-            String sabor = bd.getListaSabor().get(i).getSabor();
-            if (!itemExiste(comboSabor1, sabor)) {
-                comboSabor1.addItem(sabor);
+        try {
+            comboSabor1.removeAllItems();
+            comboSabor2.removeAllItems();
+            comboSabor2.addItem(" ");
+            for (Sabor s : saborController.listarSabores()) {
+                comboSabor1.addItem(s.getSabor());
+                comboSabor2.addItem(s.getSabor());
             }
-            if (!itemExiste(comboSabor2, sabor)) {
-                comboSabor2.addItem(sabor);
-            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao carregar sabores: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
     @SuppressWarnings("unchecked")
@@ -196,7 +190,7 @@ public class NovaPizza extends javax.swing.JFrame {
         jPanel9 = new javax.swing.JPanel();
         lugarPreco = new javax.swing.JLabel();
         lugarMedidaFinal = new javax.swing.JLabel();
-        jButton1 = new javax.swing.JButton();
+        botaoAdicionar = new javax.swing.JButton();
         jButton2 = new javax.swing.JButton();
         jMenuBar1 = new javax.swing.JMenuBar();
         MenuClientes = new javax.swing.JMenu();
@@ -541,10 +535,10 @@ public class NovaPizza extends javax.swing.JFrame {
                 .addContainerGap())
         );
 
-        jButton1.setFont(new java.awt.Font("Segoe Print", 1, 14)); // NOI18N
-        jButton1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icones/confirm.png"))); // NOI18N
-        jButton1.setText("Confirmar");
-        jButton1.addActionListener(this::jButton1ActionPerformed);
+        botaoAdicionar.setFont(new java.awt.Font("Segoe Print", 1, 14)); // NOI18N
+        botaoAdicionar.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icones/confirm.png"))); // NOI18N
+        botaoAdicionar.setText("Confirmar");
+        botaoAdicionar.addActionListener(this::botaoAdicionarActionPerformed);
 
         jButton2.setFont(new java.awt.Font("Segoe Print", 1, 14)); // NOI18N
         jButton2.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icones/close.png"))); // NOI18N
@@ -563,7 +557,7 @@ public class NovaPizza extends javax.swing.JFrame {
                 .addContainerGap())
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addGap(121, 121, 121)
-                .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, 165, Short.MAX_VALUE)
+                .addComponent(botaoAdicionar, javax.swing.GroupLayout.DEFAULT_SIZE, 165, Short.MAX_VALUE)
                 .addGap(103, 103, 103)
                 .addComponent(jButton2, javax.swing.GroupLayout.DEFAULT_SIZE, 153, Short.MAX_VALUE)
                 .addGap(129, 129, 129))
@@ -576,7 +570,7 @@ public class NovaPizza extends javax.swing.JFrame {
                 .addComponent(jPanel9, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(28, 28, 28)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(botaoAdicionar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jButton2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
@@ -743,75 +737,103 @@ public class NovaPizza extends javax.swing.JFrame {
         calcularPreco();
     }//GEN-LAST:event_CheckCircularActionPerformed
 
-    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        if (precoTotalCalculado == 0.0) {
-            JOptionPane.showMessageDialog(this, "Calcule o preço preenchendo as dimensões corretamente antes de confirmar.");
-            return;
-        }
-        double area = 0.0;
-        Forma f = null;
-        try{
-                //caso escolha por area
-            if (CheckArea.isSelected() && !caixaTextoArea.getText().isEmpty()) {
-                area = Double.parseDouble(caixaTextoArea.getText());
-                double lado = 0;
-                //instacia a forma de acordo com a escolha
-                if (CheckQuadrada.isSelected()) {
-                    f = new Quadrado();
-                } else if (CheckCircular.isSelected()) {
-                    f = new Circulo();
-                } else if (CheckTriangular.isSelected()) {
-                    f = new Triangulo();
+    private void botaoAdicionarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoAdicionarActionPerformed
+        try {
+            if (!CheckQuadrada.isSelected() && !CheckCircular.isSelected() && !CheckTriangular.isSelected()) {
+                JOptionPane.showMessageDialog(this, "Escolha uma das formas");
+                return;
+            }
+            if (!CheckDimensao.isSelected() && !CheckArea.isSelected()) {
+                JOptionPane.showMessageDialog(this, "Escolha definir por Dimensão ou Área");
+                return;
+            }
+            if (!CheckSabor1.isSelected() && !CheckSabor2.isSelected()) {
+                JOptionPane.showMessageDialog(this, "Selecione a quantidade de sabores");
+                return;
+            }
+            if (comboSabor1.getSelectedItem() == null) {
+                JOptionPane.showMessageDialog(this, "Escolha pelo menos o Sabor 1");
+                return;
+            }
+
+            String sabor1Nome = comboSabor1.getSelectedItem().toString();
+            String sabor2Nome = (CheckSabor2.isSelected() && comboSabor2.getSelectedItem() != null)
+                    ? comboSabor2.getSelectedItem().toString()
+                    : " ";
+
+            if (sabor1Nome.equals(sabor2Nome)) {
+                JOptionPane.showMessageDialog(this, "Não é permitido escolher dois sabores iguais", "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            ArrayList<Sabor> sabores = new ArrayList<>();
+            sabores.add(saborController.buscarSaborPorNome(sabor1Nome));
+            if (!sabor2Nome.isBlank()) {
+                sabores.add(saborController.buscarSaborPorNome(sabor2Nome));
+            }
+
+            String textoValor = CheckDimensao.isSelected()
+                    ? caixaTextoLado.getText().trim().replace(",", ".")
+                    : caixaTextoArea.getText().trim().replace(",", ".");
+
+            if (textoValor.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Preencha um valor para Dimensão ou Área", "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            double valorInformado = Double.parseDouble(textoValor);
+            double area = 0;
+            Forma f;
+
+            if (CheckQuadrada.isSelected()) {
+                if (CheckDimensao.isSelected()) {
+                    f = new Quadrado(valorInformado);
+                    area = f.calculaArea();
+                } else {
+                    Quadrado q = new Quadrado();
+                    double lado = q.calcularLadoQuadrado(valorInformado);
+                    q.setLado(lado);
+                    f = q;
+                    area = valorInformado;
                 }
-                else{
-                    //para evitar exceção
-                    JOptionPane.showMessageDialog(this,"Não possivel criar uma pizza sem escolher um formato","",JOptionPane.ERROR_MESSAGE);
-                    return;
+            } else if (CheckCircular.isSelected()) {
+                if (CheckDimensao.isSelected()) {
+                    f = new Circulo(valorInformado);
+                    area = f.calculaArea();
+                } else {
+                    Circulo c = new Circulo();
+                    double raio = c.calcularRaioCirculo(valorInformado);
+                    c.setRaio(raio);
+                    f = c;
+                    area = valorInformado;
+                }
+            } else {
+                if (CheckDimensao.isSelected()) {
+                    f = new Triangulo(valorInformado);
+                    area = f.calculaArea();
+                } else {
+                    Triangulo t = new Triangulo();
+                    double lado = t.calcularLadoTriangulo(valorInformado);
+                    t.setLado(lado);
+                    f = t;
+                    area = valorInformado;
                 }
             }
-                //caso escolha por medida
-            else if(CheckDimensao.isSelected() && !caixaTextoLado.getText().isEmpty()){
-                double dimensao = Double.parseDouble(caixaTextoLado.getText());
-                //instacia a forma de acordo com a escolha
-                if (CheckQuadrada.isSelected()) {
-                    f = new Quadrado(dimensao);
-                } else if (CheckCircular.isSelected()) {
-                    f = new Circulo(dimensao);
-                } else if (CheckTriangular.isSelected()) {
-                    f = new Triangulo(dimensao);
-                }
-                else{
-                    //para evitar exceção
-                    JOptionPane.showMessageDialog(this,"Não possivel criar uma pizza sem escolher um formato","",JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                area = f.calculaArea();
+
+            double valorPizza = pedidoController.calcularPrecoPizza(area, sabores);
+            Pizza pizza = new Pizza(area, valorPizza, f, sabores);
+
+            if (telaPedido != null) {
+                telaPedido.atualizarTabela(pizza, valorPizza, area);
             }
-        }
-        catch(Exception e){
-            JOptionPane.showMessageDialog(this, "Erro ao instaciar forma");
-        }
-        ArrayList<Sabor> sabores = new ArrayList<>();
-        //para adicionar o sabor(es) no array list
-        if (comboSabor1.getSelectedItem() != null) {
-            String nome1 = comboSabor1.getSelectedItem().toString();
-            Sabor sabor1= new Sabor(nome1);
-            sabores.add(sabor1);
-        }
-        if (CheckSabor2.isSelected() && comboSabor2.getSelectedItem() != null) {
-            String nome2 = comboSabor2.getSelectedItem().toString();
-            Sabor sabor2= new Sabor(nome2);
-            sabores.add(sabor2);
-        }
-        //cria pizza
-        Pizza pizza = new Pizza(area,f,sabores);
-        if (this.telaPedido != null) {
-            //pega referencia da tela e usa o metodo atualizar tabela passando as informações da pizza
-            this.telaPedido.atualizarTabela(pizza, precoTotalCalculado, area);
-        }
-        //fecha tela
-        this.dispose();
-    }//GEN-LAST:event_jButton1ActionPerformed
+            JOptionPane.showMessageDialog(this, "Pizza adicionada ao pedido!");
+            this.dispose();
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Informe um número válido.", "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+        }  
+    }//GEN-LAST:event_botaoAdicionarActionPerformed
 
     private void caixaTextoLadoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_caixaTextoLadoActionPerformed
         // TODO add your handling code here:
@@ -882,11 +904,11 @@ public class NovaPizza extends javax.swing.JFrame {
     private javax.swing.JMenuItem MenuClientesCadastrados;
     private javax.swing.JMenu MenuPedido;
     private javax.swing.JMenuItem MenuPedidoCliente;
+    private javax.swing.JButton botaoAdicionar;
     private javax.swing.JTextField caixaTextoArea;
     private javax.swing.JTextField caixaTextoLado;
     private javax.swing.JComboBox<String> comboSabor1;
     private javax.swing.JComboBox<String> comboSabor2;
-    private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton2;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;

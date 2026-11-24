@@ -9,7 +9,7 @@ public class Cliente {
     public Cliente(String nome, String sobrenome, String telefone) throws Exception {
         if (!telefone.matches("\\d{10,11}")) {
             throw new IllegalArgumentException("Telefone deve conter apenas números e ter entre 10 e 11 caracteres");
-        } else if (!nome.matches("[a-zA-ZÀ-ÿ]+") || !sobrenome.matches("[a-zA-ZÀ-ÿ]+")) {
+        } else if (!nome.matches("[a-zA-ZÀ-ÿ]+") || !sobrenome.matches("[a-zA-ZÀ-ÿ\\s]+")) {
             throw new Exception("Nome e Sobrenome só permitem letras");
         }
         this.nome = nome;
@@ -47,7 +47,7 @@ public class Cliente {
     }
 
     public void setSobrenome(String sobrenome) throws Exception {
-        if (sobrenome.matches("[a-zA-ZÀ-ÿ]+")) {
+        if (sobrenome.matches("[a-zA-ZÀ-ÿ\\s]+")) {
             this.sobrenome = sobrenome;
         } else {
             throw new Exception("Nome e Sobrenome só permitem letras");

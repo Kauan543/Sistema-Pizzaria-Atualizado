@@ -1,11 +1,8 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
- */
-package com.mycompany.projetofinalpizzaria.View;
 
+package com.mycompany.projetofinalpizzaria.View;
+import com.mycompany.projetofinalpizzaria.Controller.ClienteController;
+import com.mycompany.projetofinalpizzaria.Model.Cliente;
 import javax.swing.JOptionPane;
-import javax.swing.table.DefaultTableModel;
 
 /**
  *
@@ -14,6 +11,7 @@ import javax.swing.table.DefaultTableModel;
 public class CadastrarCliente extends javax.swing.JFrame {
     //gerado pelo Netbeans
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(CadastrarCliente.class.getName());
+    private final ClienteController clienteController = new ClienteController();
     //construtor
     public CadastrarCliente() {
         initComponents();
@@ -22,10 +20,12 @@ public class CadastrarCliente extends javax.swing.JFrame {
     }
     //para atualizar tabela de clientes
     public void atualizarTabela() {
-        //Instancia a classe que criar o modelo da tabela
-        PreencherTabelaCliente preenchimento = new PreencherTabelaCliente();
-        //utiliza o metodo gerarModelo() e coloca o modelo na tabela de clientes
-        tabelaClientes.setModel(preenchimento.gerarModelo());
+        try {
+            PreencherTabelaCliente preenchimento = new PreencherTabelaCliente();
+            tabelaClientes.setModel(preenchimento.gerarModelo());
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao carregar clientes: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+        }
     }
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -338,63 +338,40 @@ public class CadastrarCliente extends javax.swing.JFrame {
     }//GEN-LAST:event_caixaTextoTelefoneActionPerformed
 
     private void botaoAdicionarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoAdicionarActionPerformed
-        String nome = caixaTextoNome.getText();
-        String sobrenome = caixaTextoSobrenome.getText();
-        String telefone = caixaTextoTelefone.getText();
-        BancoDados bd = BancoDados.getInstance();
-        //verifica se ja existe cliente
-        for(int i = 0; i<bd.getListaCliente().size();i++){
-            if(telefone.equals(bd.getListaCliente().get(i).getTelefone())){
-                JOptionPane.showMessageDialog(this,"Já Existe cliente cadastrado com este telefone","",JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-        }
-        //verifica se alguma caixa de texto esta em branco
-        if(nome.isEmpty()|| sobrenome.isEmpty()|| telefone.isEmpty()){
-            JOptionPane.showMessageDialog(this,"Existem campos em branco por favor preencha todos os campos","",JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        try{
-            Cliente cliente = new Cliente(nome, sobrenome, telefone);
-            if(cliente != null){
-                BancoDados.getInstance().getListaCliente().add(cliente);
-                JOptionPane.showMessageDialog(this,"Cadastro Realizado com sucesso");
-            }
-        }
-        // caso telefone digitado nao siga o padrao
-        catch(IllegalArgumentException e){
-            JOptionPane.showMessageDialog(this,"Telefone invalido","",JOptionPane.ERROR_MESSAGE);
-        }
-        //caso digite algo que nao sejam letras nos campos nome e sobrenome
-        catch(Exception e){
-            JOptionPane.showMessageDialog(this,"Campo nome e sobrenome so permite letras","",JOptionPane.ERROR_MESSAGE);
+        try {
+            String nome = caixaTextoNome.getText().trim();
+            String sobrenome = caixaTextoSobrenome.getText().trim();
+            String telefone = caixaTextoTelefone.getText().trim();
+
+            clienteController.cadastrarCliente(nome, sobrenome, telefone);
+
+            JOptionPane.showMessageDialog(this, "Cliente cadastrado com sucesso");
+            caixaTextoNome.setText("");
+            caixaTextoSobrenome.setText("");
+            caixaTextoTelefone.setText("");
+            atualizarTabela();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_botaoAdicionarActionPerformed
     
     private void botaoEditarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoEditarActionPerformed
-        int linhaSelecionada = tabelaClientes.getSelectedRow();
-        //caso nenhuma linha selecionada
-        if(linhaSelecionada == -1){
-            JOptionPane.showMessageDialog(this,"Nenhuma linha foi selecionada");
-            return;
-        }
-        String telefone = tabelaClientes.getValueAt(linhaSelecionada, 2).toString();
-        BancoDados bd = BancoDados.getInstance();
-        Cliente cliente = null;
-        //busca aquele cliente na tabela de clientes do bd
-        for(int i = 0; i<bd.getListaCliente().size();i++){
-            if(telefone.equals(bd.getListaCliente().get(i).getTelefone())){
-                cliente = bd.getListaCliente().get(i);
-            }
-        }
-        //caso nao encontre cliente no bd
-        if(cliente == null){
-            JOptionPane.showMessageDialog(this, "Cliente não encontrado no banco de dados", "", JOptionPane.ERROR_MESSAGE);
-        }
-        else{
-            //abre a tela de editar cliente e passa como parametro pro construtor o cliente
-            EditarCliente editar = new EditarCliente(cliente);
-            editar.setVisible(true);
+       int linhaSelecionada = tabelaClientes.getSelectedRow();
+       if (linhaSelecionada == -1) {
+           JOptionPane.showMessageDialog(this, "Nenhuma linha foi selecionada");
+           return;
+       }
+       try {
+           String telefone = tabelaClientes.getValueAt(linhaSelecionada, 2).toString();
+           Cliente c = clienteController.buscarPorTelefone(telefone);
+           if (c == null) {
+               JOptionPane.showMessageDialog(this, "Erro ao encontrar cliente", "Erro", JOptionPane.ERROR_MESSAGE);
+               return;
+           }
+           EditarCliente ec = new EditarCliente(c, this);
+           ec.setVisible(true);
+        } catch (Exception e) {
+           JOptionPane.showMessageDialog(this, "Erro ao buscar cliente: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_botaoEditarActionPerformed
 
@@ -408,66 +385,32 @@ public class CadastrarCliente extends javax.swing.JFrame {
     //excluir cliente
     private void botaoDeleteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoDeleteActionPerformed
         int linhaSelecionada = tabelaClientes.getSelectedRow();
-        //caso nenhuma linha selecionada
-        if(linhaSelecionada == -1){
-            JOptionPane.showMessageDialog(this,"Nenhuma linha foi selecionada");
+        if (linhaSelecionada == -1) {
+            JOptionPane.showMessageDialog(this, "Nenhuma linha foi selecionada");
             return;
         }
-        String telefone = tabelaClientes.getValueAt(linhaSelecionada, 2).toString();
-        DefaultTableModel tabela =(DefaultTableModel) tabelaClientes.getModel();
-        //remove linha do modelo da tabela
-        tabela.removeRow(linhaSelecionada);
-        BancoDados bd = BancoDados.getInstance();
-        for(int i = 0;i<bd.getListaCliente().size();i++){
-            if(telefone.equals(bd.getListaCliente().get(i).getTelefone())){
-                //remove cliente do bd
-                bd.getListaCliente().remove(i);
-                JOptionPane.showMessageDialog(this,"Cliente Removido");
-                return;
-            }
+        try {
+            String telefone = tabelaClientes.getValueAt(linhaSelecionada, 2).toString();
+            clienteController.deletarPorTelefone(telefone);
+            JOptionPane.showMessageDialog(this, "Cliente excluído");
+            atualizarTabela();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Não foi possível excluir (verifique se o cliente possui pedidos): " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
-        JOptionPane.showMessageDialog(this,"Cliente não encontrado no bd");
     }//GEN-LAST:event_botaoDeleteActionPerformed
     //pesquisar
     private void botaoPesquisarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoPesquisarActionPerformed
-        String resultadoPesquisa = caixaTextoPesquisa.getText();
-        boolean encontrado = true;
-        BancoDados bd = BancoDados.getInstance();
-        String [] coluna = {"Nome","Sobrenome","Telefone"};
-        DefaultTableModel modelo = new DefaultTableModel(coluna,0);
-        //procura por telefone
-        for(int i = 0; i<bd.getListaCliente().size();i++){
-            Cliente cliente = bd.getListaCliente().get(i);
-            if(resultadoPesquisa.equals(cliente.getTelefone())){
-                encontrado = false;
-                //cria o modelo com os dados do cliente
-                Object [] linha = {cliente.getNome(), cliente.getSobrenome(), cliente.getTelefone()};
-                modelo.addRow(linha);
-            }
+    try {
+        String termo = caixaTextoPesquisa.getText().trim();
+        PreencherTabelaCliente preenchimento = new PreencherTabelaCliente();
+        if (termo.isEmpty()) {
+            tabelaClientes.setModel(preenchimento.gerarModelo());
+        } else {
+            tabelaClientes.setModel(preenchimento.gerarModeloFiltrado(termo));
         }
-        //caso encontre por telefone, retorna resultado e encerra busca A LOGICA ESTA INVETIDA, FIQUEI COM PREGUIÇA DE ARRUMAR
-        if(encontrado == false){
-            tabelaClientes.setModel(modelo);
-            return;
-        }
-        //caso nao encontre, buscar pelo sobrenome ou por parte do mesmo
-        for(int i = 0; i<bd.getListaCliente().size();i++){
-            Cliente cliente = bd.getListaCliente().get(i);
-            //utilizado contains() para pegar partes do sobrenome tambem
-            if(cliente.getSobrenome().contains(resultadoPesquisa)){
-                encontrado = false;
-                Object [] linha = {cliente.getNome(), cliente.getSobrenome(), cliente.getTelefone()};
-                modelo.addRow(linha);
-            }
-        }
-        //caso nao encontre nem por sobrenome e nem por telefone A LOGICA ESTA INVETIDA, FIQUEI COM PREGUIÇA DE ARRUMAR
-        if(encontrado == true){
-            JOptionPane.showMessageDialog(this,"Cliente não cadastrado", "",JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        //caso encontre por sobrenome
-        tabelaClientes.setModel(modelo);
-        
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(this, "Erro ao filtrar clientes: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+    }
     }//GEN-LAST:event_botaoPesquisarActionPerformed
 
     private void MenuClientesCadastradosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_MenuClientesCadastradosActionPerformed

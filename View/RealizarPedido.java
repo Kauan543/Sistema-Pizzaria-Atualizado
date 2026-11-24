@@ -4,7 +4,17 @@
  */
 package com.mycompany.projetofinalpizzaria.View;
 
+import com.mycompany.projetofinalpizzaria.Controller.ClienteController;
+import com.mycompany.projetofinalpizzaria.Controller.PedidoController;
+import com.mycompany.projetofinalpizzaria.Controller.SaborController;
 import com.mycompany.projetofinalpizzaria.Model.Circulo;
+import com.mycompany.projetofinalpizzaria.Model.Cliente;
+import com.mycompany.projetofinalpizzaria.Model.Forma;
+import com.mycompany.projetofinalpizzaria.Model.Pedido;
+import com.mycompany.projetofinalpizzaria.Model.Pizza;
+import com.mycompany.projetofinalpizzaria.Model.Quadrado;
+import com.mycompany.projetofinalpizzaria.Model.Sabor;
+import com.mycompany.projetofinalpizzaria.Model.Triangulo;
 import java.util.ArrayList;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
@@ -14,7 +24,9 @@ import javax.swing.table.DefaultTableModel;
  * @author Kauan
  */
 public class RealizarPedido extends javax.swing.JFrame {
-    
+    private final ClienteController clienteController = new ClienteController();
+    private final PedidoController pedidoController = new PedidoController();
+    private final SaborController saborController = new SaborController();
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(RealizarPedido.class.getName());
     // Variável para controlar qual pedido está sendo editado. -1 para um novo Pedido
     private int idPedidoEmEdicao = -1;
@@ -341,19 +353,7 @@ public class RealizarPedido extends javax.swing.JFrame {
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-    //busca no bd o valor por CM²
-    private double obterPrecoPorCm2(String nomeSabor) {
-        if (nomeSabor == null){
-            return 0;
-        }
-        BancoDados bd = BancoDados.getInstance();
-        for (int i = 0; i < bd.getListaSabor().size(); i++) {
-            if (bd.getListaSabor().get(i).getSabor().equals(nomeSabor)) {
-                return bd.getListaSabor().get(i).getTipo().getPrecoPorCentimentroQuadrado(); 
-            }
-        }
-        return 0;
-    }
+
     // atualiza os itens da tabela do pedido METODO CHAMADO EM NOVA PIZZA
     public void atualizarTabela(Pizza pizza, double valor, double area){ 
         DefaultTableModel modelo = (DefaultTableModel)tabelaPedido.getModel();
@@ -400,22 +400,12 @@ public class RealizarPedido extends javax.swing.JFrame {
     } 
     //busca cliente
     private void botaoBuscarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoBuscarActionPerformed
-        String telefone = caixaTextoTelefone.getText();
-        BancoDados bd = BancoDados.getInstance();
-        boolean encontrado = false;
-        Cliente cliente= null;
-        //procura cliente no bd
-        for(int i = 0; i<bd.getListaCliente().size();i++){
-            if(telefone.equals(bd.getListaCliente().get(i).getTelefone())){
-                cliente = bd.getListaCliente().get(i); 
-                lugarNomeCliente.setText("Cliente: " + cliente.getNome() + " " + cliente.getSobrenome());
-                encontrado = true;
-                break;
-            }
-        }
-        //caso nao encontre
-        if(encontrado == false){
-            JOptionPane.showMessageDialog(this,"Cliente não encontrado!");
+        try {
+        String telefone = caixaTextoTelefone.getText().trim();
+        Cliente cliente = clienteController.buscarPorTelefone(telefone);
+
+        if (cliente == null) {
+            JOptionPane.showMessageDialog(this, "Cliente não encontrado!");
             MenuPedidoCliente.setEnabled(false);
             AreaPedido.setEnabled(false);
             botao1Pedido.setEnabled(false);
@@ -430,189 +420,126 @@ public class RealizarPedido extends javax.swing.JFrame {
             labelInformacoes.setText("Resumo Pedido: R$:0.00 | 0 Pizzas");
             return;
         }
-        else{
-            //listar todos os pedidos do cliente
-            PreecherTabelaPedidoCliente  preenchimento = new PreecherTabelaPedidoCliente();
-            tabelasPedidosCliente.setModel(preenchimento.gerarModelo2(cliente));
-            //libera esses dois botoes
-            botaoAtualizar.setEnabled(true);
-            botaoNovoPedido.setEnabled(true);
+
+        lugarNomeCliente.setText("Cliente: " + cliente.getNome() + " " + cliente.getSobrenome());
+        PreecherTabelaPedidoCliente preenchimento = new PreecherTabelaPedidoCliente();
+        tabelasPedidosCliente.setModel(preenchimento.gerarModelo2(cliente));
+        botaoAtualizar.setEnabled(true);
+        botaoNovoPedido.setEnabled(true);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao buscar cliente: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_botaoBuscarActionPerformed
     //atualizar pedido
     private void botaoAtualizarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoAtualizarActionPerformed
         int linhaSelecionada = tabelasPedidosCliente.getSelectedRow();
-        //caso nenhum pedido selecionado
         if (linhaSelecionada == -1) {
             JOptionPane.showMessageDialog(this, "Selecione um pedido na tabela do cliente para atualizar.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
         String estadoPedido = (String) tabelasPedidosCliente.getValueAt(linhaSelecionada, 2);
-        //caso pedido esteja entregue
         if (!estadoPedido.equals("Aberto") && !estadoPedido.equals("A caminho")) {
-            JOptionPane.showMessageDialog(this, "Pedidos encerrados nao podem ser alterados.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Pedidos encerrados não podem ser alterados.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        int idPedido = Integer.parseInt(tabelasPedidosCliente.getValueAt(linhaSelecionada, 0).toString());
-        // Salva o ID para usar na hora de salvar
-        this.idPedidoEmEdicao = idPedido;
-        MenuPedidoCliente.setEnabled(true);
-        AreaPedido.setEnabled(true);
-        botao1Pedido.setEnabled(true);
-        botao2Pedido.setEnabled(true);
-        tabelaPedido.setEnabled(true);
-        panelPedido.setEnabled(true);
-        limparTabela();
 
-        BancoDados bd = BancoDados.getInstance();
-        Pedido pedidoSelecionado = null;
-        //procura o pedido na lista de pedidos do bd
-        for (int i = 0; i<bd.getListaPedido().size();i++) {
-            Pedido p = bd.getListaPedido().get(i);
-            if (p.getIdPedido()== idPedido) { 
-                pedidoSelecionado = p;
-                break;
-            }
-        }
-        //
-        if (pedidoSelecionado != null) {
-            //preencher a tabela com os itens do pedido
-            for (int j = 0; j<pedidoSelecionado.getPizza().size();j++){ 
-                Pizza p = pedidoSelecionado.getPizza().get(j);
-                double area = p.getArea();
-                double precoPorCm2 = 0;
-                //caso pizza tenha 1 sabor
-                if(p.getSabor().size()> 1){
-                    String nome1 = p.getSabor().get(0).getSabor();
-                    String nome2 = p.getSabor().get(1).getSabor();
-                    double preco1 = obterPrecoPorCm2(nome1);
-                    double preco2 = obterPrecoPorCm2(nome2);
-                    precoPorCm2 = (preco1 + preco2)/2;
-                }
-                //caso pizza tem 2 sabores
-                else{
-                    String nome1 = p.getSabor().get(0).getSabor();
-                    precoPorCm2 = obterPrecoPorCm2(nome1);
-                }
-                double valorDaPizza = area * precoPorCm2;
+        try {
+            int idPedido = Integer.parseInt(tabelasPedidosCliente.getValueAt(linhaSelecionada, 0).toString());
+            Pedido pedidoSelecionado = pedidoController.buscarPedidoPorId(idPedido);
 
-                atualizarTabela(p, valorDaPizza, p.getArea());
+            if (pedidoSelecionado != null) {
+                this.idPedidoEmEdicao = idPedido;
+                MenuPedidoCliente.setEnabled(true);
+                AreaPedido.setEnabled(true);
+                botao1Pedido.setEnabled(true);
+                botao2Pedido.setEnabled(true);
+                tabelaPedido.setEnabled(true);
+                panelPedido.setEnabled(true);
+                limparTabela();
+
+                for (Pizza p : pedidoSelecionado.getPizza()) {
+                    double valorPizza = pedidoController.calcularPrecoPizza(p.getArea(), p.getSabor());
+                    atualizarTabela(p, valorPizza, p.getArea());
+                }
             }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao carregar pedido: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_botaoAtualizarActionPerformed
     //salvar pedido
     private void botao2PedidoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botao2PedidoActionPerformed
-        //caso tente criar pedido sem nenhuma pizza
-        if(tabelaPedido.getRowCount() == 0){
-            JOptionPane.showMessageDialog(this,"O pedido nao pode ser criado sem nenhum item", "",JOptionPane.ERROR_MESSAGE);
+        if (tabelaPedido.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "O pedido não pode ser criado sem nenhum item", "", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        BancoDados bd = BancoDados.getInstance();
-        Estado estado = bd.getListaEstado().get(0); 
-        String telefone = caixaTextoTelefone.getText();
-        boolean encontrado = false;
-        Cliente cliente= null;
-        //procura cliente no bd
-        for(int i = 0; i<bd.getListaCliente().size();i++){
-            if(telefone.equals(bd.getListaCliente().get(i).getTelefone())){
-                cliente = bd.getListaCliente().get(i); 
-                encontrado = true;
-                break;
+        try {
+            String telefone = caixaTextoTelefone.getText().trim();
+            Cliente cliente = clienteController.buscarPorTelefone(telefone);
+            if (cliente == null) {
+                JOptionPane.showMessageDialog(this, "Erro ao encontrar cliente para atribuir em pedido", "", JOptionPane.ERROR_MESSAGE);
+                return;
             }
-        }
-        //caso nao encontre cliente no bd
-        if(encontrado == false){
-            JOptionPane.showMessageDialog(this,"Erro ao encontrar cliente para atribuir em pedido", "",JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        int quantidadePizzas = tabelaPedido.getRowCount();
-        double valorTotal = 0;
-        ArrayList<Pizza> pizzas = new ArrayList<>();
-        for(int i = 0; i< quantidadePizzas; i++){
-            //lista de sabores da pizza
-            ArrayList<Sabor> sabores = new ArrayList<>();
-            String valor = (String)tabelaPedido.getValueAt(i, 2);
-            valor = valor.replace("R$ ", "").replace(",", ".");
-            valorTotal += Double.parseDouble(valor);
-            String sabor = (String)tabelaPedido.getValueAt(i, 0);
-            // separa os sabores, cada um em uma string
-            String[] nomesSabores = sabor.split(";");
-            for(int j = 0; j < nomesSabores.length;j++){
-                for(int l = 0; l < bd.getListaSabor().size();l++){
-                    Sabor s = bd.getListaSabor().get(l);
-                    if(s.getSabor().equals(nomesSabores[j])){
-                        sabores.add(s);
-                        break;
+
+            int quantidadePizzas = tabelaPedido.getRowCount();
+            double valorTotal = 0;
+            ArrayList<Pizza> pizzas = new ArrayList<>();
+
+            for (int i = 0; i < quantidadePizzas; i++) {
+                String valorStr = ((String) tabelaPedido.getValueAt(i, 2)).replace("R$ ", "").replace(",", ".");
+                double valorPizza = Double.parseDouble(valorStr);
+                valorTotal += valorPizza;
+
+                String saborStr = (String) tabelaPedido.getValueAt(i, 0);
+                String[] nomesSabores = saborStr.split(";");
+                ArrayList<Sabor> sabores = new ArrayList<>();
+                for (String nomeS : nomesSabores) {
+                    if (!nomeS.isBlank()) {
+                        Sabor s = saborController.buscarSaborPorNome(nomeS);
+                        if (s != null) sabores.add(s);
                     }
                 }
-            }
-            String nomeForma = (String)tabelaPedido.getValueAt(i,1);
-            Forma f;
-            if(nomeForma.equals("Circulo")){
-                f = new Circulo();
-            }
-            else if(nomeForma.equals("Triangulo")){
-                f = new Triangulo();
-            }
-            else if(nomeForma.equals("Quadrado")){
-                f = new Quadrado();
-            }
-            //caso erro no formato da pizza
-            else{
-                JOptionPane.showMessageDialog(this,"Erro ao encotrar formato pizza", "",JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            String valorArea = (String)tabelaPedido.getValueAt(i,3);
-            valorArea = valorArea.replace(" cm²", "").replace(",", ".");
-            double areaConvertida = Double.parseDouble(valorArea); 
-            Pizza p = new Pizza(areaConvertida, f ,sabores);
-            //adiciona pizza na lista
-            pizzas.add(p);
-        }
-     //Verifica se é uma atualização ou novo
-        if (this.idPedidoEmEdicao != -1) {
-            //Caso seja atualização, procura o pedido existente e altera os dados
-            for (int i = 0; i < bd.getListaPedido().size(); i++) {
-                Pedido p = bd.getListaPedido().get(i);
-                if (p.getIdPedido() == this.idPedidoEmEdicao) {
-                    p.setPizza(pizzas);
-                    p.setPrecoTotal(valorTotal); // Atualiza o valor total do pedido
-                    break;
+
+                String nomeForma = (String) tabelaPedido.getValueAt(i, 1);
+                Forma f;
+                if (nomeForma.equals("Circulo")) f = new Circulo();
+                else if (nomeForma.equals("Triangulo")) f = new Triangulo();
+                else if (nomeForma.equals("Quadrado")) f = new Quadrado();
+                else {
+                    JOptionPane.showMessageDialog(this, "Erro ao encontrar formato da pizza", "", JOptionPane.ERROR_MESSAGE);
+                    return;
                 }
+
+                String areaStr = ((String) tabelaPedido.getValueAt(i, 3)).replace(" cm²", "").replace(",", ".");
+                double areaConvertida = Double.parseDouble(areaStr);
+
+                pizzas.add(new Pizza(areaConvertida, valorPizza, f, sabores));
             }
-            JOptionPane.showMessageDialog(this, "Pedido atualizado com sucesso!");
-            
-        } else {
-            // Caso seja novo pedido, cria um novo ID e adiciona na lista
-            int idPedido = bd.getListaPedido().size() + 1;
-            Pedido pedido = new Pedido(idPedido, valorTotal, pizzas, estado, cliente);
-            
-            if(pedido == null){
-                JOptionPane.showMessageDialog(this,"Erro ao criar pedido", "",JOptionPane.ERROR_MESSAGE);
-                return;
+
+            if (this.idPedidoEmEdicao != -1) {
+                pedidoController.atualizarPedidoExistente(this.idPedidoEmEdicao, pizzas, valorTotal);
+                JOptionPane.showMessageDialog(this, "Pedido atualizado com sucesso!");
             } else {
-                bd.getListaPedido().add(pedido);
+                pedidoController.salvarNovoPedido(cliente, pizzas, valorTotal);
                 JOptionPane.showMessageDialog(this, "Pedido criado com sucesso!");
             }
+
+            this.idPedidoEmEdicao = -1;
+            MenuPedidoCliente.setEnabled(false);
+            AreaPedido.setEnabled(false);
+            botao1Pedido.setEnabled(false);
+            botao2Pedido.setEnabled(false);
+            tabelaPedido.setEnabled(false);
+            panelPedido.setEnabled(false);
+            botaoNovoPedido.setEnabled(false);
+            botaoAtualizar.setEnabled(false);
+            lugarNomeCliente.setText("Cliente: ");
+            caixaTextoTelefone.setText("");
+            limparTabela();
+            limparTabela2();
+            labelInformacoes.setText("Resumo Pedido: R$:0.00 | 0 Pizzas");
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
-        
-        //restaura a variável de controle
-        this.idPedidoEmEdicao = -1;
-        
-        MenuPedidoCliente.setEnabled(false);
-        AreaPedido.setEnabled(false);
-        botao1Pedido.setEnabled(false);
-        botao2Pedido.setEnabled(false);
-        tabelaPedido.setEnabled(false);
-        panelPedido.setEnabled(false);
-        botaoNovoPedido.setEnabled(false);
-        botaoAtualizar.setEnabled(false);
-        lugarNomeCliente.setText("Cliente: ");
-        caixaTextoTelefone.setText("");
-        
-        limparTabela();
-        limparTabela2();
-        labelInformacoes.setText("Resumo Pedido: R$:0.00 | 0 Pizzas");
     }//GEN-LAST:event_botao2PedidoActionPerformed
 
     private void botao1PedidoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botao1PedidoActionPerformed

@@ -3,6 +3,8 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
 package com.mycompany.projetofinalpizzaria.View;
+import com.mycompany.projetofinalpizzaria.Controller.SaborController;
+import com.mycompany.projetofinalpizzaria.Model.TipoPizza;
 
 import javax.swing.JOptionPane;
 
@@ -13,6 +15,7 @@ import javax.swing.JOptionPane;
 public class CadastrarSabor extends javax.swing.JFrame {
     //gerado pelo netbeans
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(CadastrarSabor.class.getName());
+    private final SaborController saborController = new SaborController();
     //construtor
     public CadastrarSabor() {
         initComponents();
@@ -21,9 +24,13 @@ public class CadastrarSabor extends javax.swing.JFrame {
     }
     //busca no bd os tipos e preenche o combo
     public void preencherComboTipo(){
-        BancoDados bd = BancoDados.getInstance();
-        for(int i = 0; i < bd.getListaTipo().size();i++){
-            comboTipoPizza.addItem(bd.getListaTipo().get(i).getCategoria());
+        try {
+            comboTipoPizza.removeAllItems();
+            for (TipoPizza tp : saborController.listarTiposPizza()) {
+                comboTipoPizza.addItem(tp.getCategoria());
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao carregar categorias: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
         
@@ -263,39 +270,17 @@ public class CadastrarSabor extends javax.swing.JFrame {
     }//GEN-LAST:event_botaoLimparActionPerformed
     
     private void botaoAdicionarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoAdicionarActionPerformed
-        String nomeSabor = caixaTextoNome.getText();
-        String tipo = (String) comboTipoPizza.getSelectedItem();
-        BancoDados bd = BancoDados.getInstance();
-        //caso campo nome em branco
-        if(nomeSabor.isEmpty()|| tipo.isEmpty()){
-            JOptionPane.showMessageDialog(this,"Existem campos em branco por favor preencha todos os campos","",JOptionPane.ERROR_MESSAGE);
-            return;
+        try {
+            String nomeSabor = caixaTextoNome.getText().trim();
+            String categoria = comboTipoPizza.getSelectedItem().toString();
+
+            saborController.cadastrarSabor(nomeSabor, categoria);
+
+            JOptionPane.showMessageDialog(this, "Sabor cadastrado com sucesso!");
+            caixaTextoNome.setText("");
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
-        //verifica se ja existe aquela sabor
-        for(int j = 0; j< bd.getListaSabor().size();j++){
-            Sabor s = bd.getListaSabor().get(j);
-            if(s.getSabor().equals(nomeSabor)){
-                JOptionPane.showMessageDialog(this,"Sabor ja cadastrado","",JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-        }
-        try{
-            for(int i = 0; i < bd.getListaTipo().size();i++){
-                TipoPizza tipop = bd.getListaTipo().get(i);
-                if(tipop.getCategoria().equals(tipo)){
-                    Sabor sabor = new Sabor(nomeSabor,tipop);
-                    bd.getListaSabor().add(sabor);
-                    JOptionPane.showMessageDialog(this,"Sabor Adicionado");
-                    return;
-                }
-            }
-        }
-        //para garantir que so tenham letras no nome do sabor
-        catch(Exception e){
-            JOptionPane.showMessageDialog(this,"Somentes letras podem ser utilizadas para nome do sabor","",JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        JOptionPane.showMessageDialog(this,"Erro ao encontrar o tipo","",JOptionPane.ERROR_MESSAGE);
     }//GEN-LAST:event_botaoAdicionarActionPerformed
 
     private void comboTipoPizzaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_comboTipoPizzaActionPerformed

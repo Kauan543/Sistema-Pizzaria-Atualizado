@@ -3,7 +3,8 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
 package com.mycompany.projetofinalpizzaria.View;
-
+import com.mycompany.projetofinalpizzaria.Controller.ClienteController;
+import com.mycompany.projetofinalpizzaria.Model.Cliente;
 import javax.swing.JOptionPane;
 
 /**
@@ -14,7 +15,9 @@ public class EditarCliente extends javax.swing.JFrame {
     //gerado pelo netbeans
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(EditarCliente.class.getName());
     //variavel para salvar cliente que vem da pagina cadastrar cliente
+    private final ClienteController clienteController = new ClienteController();
     private Cliente clienteEmEdicao;
+    private CadastrarCliente telaPai;
     /**
      * Creates new form EditarCliente
      */
@@ -22,15 +25,13 @@ public class EditarCliente extends javax.swing.JFrame {
     public EditarCliente() {
         initComponents();
         MenuClientesCadastrados.setEnabled(false);
-        MenuClientesCadastrados.setEnabled(false);
     }
-    //construtor criado para ja receber ter o cliente q sera alterado
-    public EditarCliente(Cliente cliente) {
+   // Construtor chamado pelo CadastrarCliente
+    public EditarCliente(Cliente cliente, CadastrarCliente telaPai) {
         initComponents(); 
         MenuClientesCadastrados.setEnabled(false);
-        MenuClientesCadastrados.setEnabled(false);
         this.clienteEmEdicao = cliente;
-        //preenche os campos ja com os dados dos clientes
+        this.telaPai = telaPai; 
         caixaTextoNome.setText(cliente.getNome());
         caixaTextoSobrenome.setText(cliente.getSobrenome());
         caixaTextoTelefone.setText(cliente.getTelefone());
@@ -294,31 +295,20 @@ public class EditarCliente extends javax.swing.JFrame {
     }//GEN-LAST:event_botaoLimparActionPerformed
 
     private void botaoAdicionarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoAdicionarActionPerformed
-        String nome = caixaTextoNome.getText();
-        String sobrenome = caixaTextoSobrenome.getText();
-        String telefone = caixaTextoTelefone.getText();
-        //Se tiver campos em branco
-        if(nome.isEmpty()|| sobrenome.isEmpty()|| telefone.isEmpty()){
-            JOptionPane.showMessageDialog(this,"Existem campos em branco por favor preencha todos os campos","",JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        try{
-            // valida os dados para corrigir bug encontrado
-            Cliente clienteTeste = new Cliente(nome, sobrenome, telefone);
-            clienteEmEdicao.setNome(nome);
-            clienteEmEdicao.setSobrenome(sobrenome);
-            clienteEmEdicao.setTelefone(telefone);
-            JOptionPane.showMessageDialog(this,"Edição feita com sucesso!");
+        try {
+            String novoNome = caixaTextoNome.getText().trim();
+            String novoSobrenome = caixaTextoSobrenome.getText().trim();
+            String novoTelefone = caixaTextoTelefone.getText().trim();
+
+            clienteController.atualizarCliente(clienteEmEdicao, novoNome, novoSobrenome, novoTelefone);
+
+            JOptionPane.showMessageDialog(this, "Cliente atualizado com sucesso");
+            if (telaPai != null) {
+                telaPai.atualizarTabela();
+            }
             this.dispose();
-            
-        }
-        //caso telefone nao siga padrao
-        catch(IllegalArgumentException e){
-            JOptionPane.showMessageDialog(this,"Telefone invalido","",JOptionPane.ERROR_MESSAGE);
-        }
-        //caso nome e sobrenome tenha algo alem de letras
-        catch(Exception e){
-            JOptionPane.showMessageDialog(this,"Campo nome e sobrenome so permite letras","",JOptionPane.ERROR_MESSAGE);
+        }catch (Exception e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_botaoAdicionarActionPerformed
 

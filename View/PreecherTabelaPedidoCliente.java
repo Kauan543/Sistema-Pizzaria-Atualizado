@@ -1,37 +1,26 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.mycompany.projetofinalpizzaria.View;
 
+import com.mycompany.projetofinalpizzaria.Controller.PedidoController;
+import com.mycompany.projetofinalpizzaria.Model.Cliente;
+import com.mycompany.projetofinalpizzaria.Model.Pedido;
+import java.util.ArrayList;
 import javax.swing.table.DefaultTableModel;
 
-/**
- *
- * @author Kauan
- */
 public class PreecherTabelaPedidoCliente {
-    //gera modelo pra tabela de Pedidos do cliente
-     public DefaultTableModel gerarModelo2(Cliente cliente){
-        String [] colunas = {"N° Pedido", "Valor", "Estado"};
-        DefaultTableModel modelo = new DefaultTableModel(colunas, 0){
-            //Classe anonima para impedir a edição da celula
-            @Override
-            public boolean isCellEditable(int row, int column) {
-            return false; 
-            }
-        };        
-        BancoDados banco = BancoDados.getInstance();
-        for(int i = 0; i<banco.getListaPedido().size();i++){
-            double precoTotal = banco.getListaPedido().get(i).getPrecoTotal();
-            if(banco.getListaPedido().get(i).getCliente().getTelefone().equals(cliente.getTelefone())){
-                Object [] linha= {
-                banco.getListaPedido().get(i).getIdPedido(),
-                String.format("R$ %.2f", precoTotal),
-                banco.getListaPedido().get(i).getEstado().getNome()
-            };
-            modelo.addRow(linha);
-            }  
+
+    public DefaultTableModel gerarModelo2(Cliente cliente) throws Exception {
+        String[] colunas = {"N° Pedido", "Valor", "Estado"};
+        DefaultTableModel modelo = new DefaultTableModel(colunas, 0);
+
+        PedidoController controller = new PedidoController();
+        ArrayList<Pedido> pedidos = controller.listarPedidosDoCliente(cliente.getIdCliente());
+
+        for (Pedido p : pedidos) {
+            modelo.addRow(new Object[]{
+                p.getIdPedido(),
+                String.format("R$ %.2f", p.getPrecoTotal()),
+                p.getEstado().getNome()
+            });
         }
         return modelo;
     }

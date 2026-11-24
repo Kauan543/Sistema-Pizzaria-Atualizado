@@ -1,7 +1,6 @@
 package com.mycompany.projetofinalpizzaria.ModelDao;
 
 import com.mycompany.projetofinalpizzaria.Model.Cliente;
-import com.mycompany.projetofinalpizzaria.ModelDao.ConnectionFactory;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;

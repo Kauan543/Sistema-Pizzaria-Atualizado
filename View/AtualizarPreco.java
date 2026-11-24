@@ -6,7 +6,8 @@ package com.mycompany.projetofinalpizzaria.View;
 
 import java.util.InputMismatchException;
 import javax.swing.JOptionPane;
-
+import com.mycompany.projetofinalpizzaria.Controller.SaborController;
+import com.mycompany.projetofinalpizzaria.Model.TipoPizza;
 /**
  *
  * @author Kauan
@@ -14,7 +15,7 @@ import javax.swing.JOptionPane;
 public class AtualizarPreco extends javax.swing.JFrame {
     //gerado pelo Netbeans
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(AtualizarPreco.class.getName());
-    
+    private final SaborController saborController = new SaborController();
     public AtualizarPreco() {
         initComponents();
         MenuAtualizarPreco.setEnabled(false);
@@ -23,22 +24,27 @@ public class AtualizarPreco extends javax.swing.JFrame {
     }
     //busca no bd os tipos para preencher combo
     public void preencherComboTipo(){
-        BancoDados bd = BancoDados.getInstance();
-        for(int i = 0; i < bd.getListaTipo().size();i++){
-            comboTipoPizza.addItem(bd.getListaTipo().get(i).getCategoria());
+        try {
+            comboTipoPizza.removeAllItems();
+            for (TipoPizza tp : saborController.listarTiposPizza()) {
+                comboTipoPizza.addItem(tp.getCategoria());
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao carregar categorias: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
     //busca no bd o precoPorCm² pra ja carregar no campo pelo tipo escolhido
     public void preencherCampoValor(){
-        String tipo = (String) comboTipoPizza.getSelectedItem();
-        BancoDados bd = BancoDados.getInstance();
-        for(int i = 0; i < bd.getListaTipo().size();i++){
-                TipoPizza tipop = bd.getListaTipo().get(i);
-                if(tipop.getCategoria().equals(tipo)){
-                    caixaTextoPreco.setText(String.valueOf(tipop.getPrecoPorCentimentroQuadrado()));
-                    break;
+        if (comboTipoPizza.getSelectedItem() == null) return;
+            try {
+                String categoriaSelecionada = comboTipoPizza.getSelectedItem().toString();
+                TipoPizza tp = saborController.buscarTipoPorCategoria(categoriaSelecionada);
+                if (tp != null) {
+                    caixaTextoPreco.setText(String.format("%.2f", tp.getPrecoPorCentimentroQuadrado()));
                 }
-        }        
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, "Erro ao consultar preço: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            }    
     }
         
     @SuppressWarnings("unchecked")
@@ -277,37 +283,20 @@ public class AtualizarPreco extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
     // atualiza o preço
     private void botaoAdicionarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoAdicionarActionPerformed
-        String tipo = (String) comboTipoPizza.getSelectedItem();
-        String preco = caixaTextoPreco.getText();
-        BancoDados bd = BancoDados.getInstance();
-        //verifica se o valor do preço e do tipo e vazio
-        if(tipo.isEmpty()||preco.isEmpty()){
-            JOptionPane.showMessageDialog(this,"Existem campos em branco por favor preencha todos os campos","",JOptionPane.ERROR_MESSAGE);
-            return;
+        try {
+        String categoria = comboTipoPizza.getSelectedItem().toString();
+        String textoValor = caixaTextoPreco.getText().trim().replace(",", ".");
+        double novoPreco = Double.parseDouble(textoValor);
+
+        saborController.atualizarPrecoTipo(categoria, novoPreco);
+
+        JOptionPane.showMessageDialog(this, "Valor atualizado com sucesso");
+        preencherCampoValor();
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Digite um valor numérico válido.", "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
-        try{
-            for(int i = 0; i < bd.getListaTipo().size();i++){
-                TipoPizza tipop = bd.getListaTipo().get(i);
-                if(tipop.getCategoria().equals(tipo)){
-                    tipop.setPrecoPorCentimentroQuadrado(Double.parseDouble(preco));
-                    JOptionPane.showMessageDialog(this,"Valor alterado para o tipo de pizza");
-                    preencherCampoValor();
-                    return;
-                }
-            }
-        }
-        //caso nao sejam digitados numeros no campo preço
-        catch(InputMismatchException e){
-            JOptionPane.showMessageDialog(this,"Somentes numeros podem ser digitados no campo preço","",JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        //caso tenham mais de dois numeros depois da virgula no campo
-        catch(Exception e){
-            JOptionPane.showMessageDialog(this,"O campo preço, so aceita valores ate 2 numeros depois do ponto","",JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        //caso nao encontre tipo no bd
-        JOptionPane.showMessageDialog(this,"Erro ao encontrar o tipo","",JOptionPane.ERROR_MESSAGE);
     }//GEN-LAST:event_botaoAdicionarActionPerformed
     
     private void comboTipoPizzaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_comboTipoPizzaActionPerformed
